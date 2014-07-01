@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8"/>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
+    <script type="text/javascript">
+    function inicializa() {
+        window.variacoes = null
+        var comprimento = 1000
+        var altura = 600
+        var ultima_data = "01/08/13"
+          var svg = dimple.newSvg("#chartContainer", comprimento, altura);
+          d3.csv("dados/teste_ipca.csv", function (data) {
+
+              //variáveis de posição
+              var posicao_y = 0,
+                  posicao_x = 0,
+                  top = 30,
+                  left = 80,
+                  margem_x = 320,
+                  margem_y = 180,
+                  width = 150,
+                  height = 90
+
+              //pega cada um dos recortes
+              var recortes = dimple.getUniqueValues(data, "variavel");
+        
+              //acha a distância média no eixo X para cada peso
+              var pesos = dimple.getUniqueValues(data, "peso");
+              var distancia_x = (comprimento-margem_x)/pesos.length
+        
+              //acha o máximo e o mínimo do eixo Y
+              max_min = achaMaxMin(recortes,data,ultima_data)
+              var y_min = max_min[0]
+              var y_max = max_min[1]
+        
+              // desenha um gráfico para cada um dos recortes
+              recortes.forEach(function (recorte) {
+                  //filtra o dado e constrói o gráfico
+                  data_filtrado = dimple.filterData(data,"variavel",recorte);
+                  var myChart = new dimple.chart(svg, data_filtrado);
+            
+                  //acha as posições
+                  posicao_x = left+data_filtrado[0].peso*distancia_x
+                  posicao_y = top+achaPosicaoY(altura-margem_y,
+                      y_min,
+                      y_max,
+                      data_filtrado[data_filtrado.length-1].valor)
+                  myChart.setBounds(posicao_x, posicao_y, width, height);
+            
+                  //cria os eixos e os esconde
+                  var x = myChart.addCategoryAxis("x", "data");
+                  var y = myChart.addMeasureAxis("y", "valor");
+                  var s = myChart.addSeries("variavel", dimple.plot.line);
+                  y.hidden = true;
+                  x.hidden = true;
+            
+                  myChart.draw();
+
+            }, this);
+      
+  
+            //desenha um gráfico grande para servir de referência
+            var novo_data = []
+            var i = 0
+            //só divide os dados: metade é o valor máximo, metade o mínimo
+            //isso é necessário para que o eixo X fique no meio
+            data_filtrado.forEach(function (dado){
+                if (i == 0) {
+                    dado.peso = y_max/100
+                    i = 1
+                } else {
+                    dado.peso = y_min/100
+                    i = 0
+                }
+            novo_data.push(dado)            
+            },this)
+            var bigChart = new dimple.chart(svg, novo_data);
+            var y_grande = bigChart.addPctAxis("y","peso")
+            y_grande.overrideMax = y_max/100
+            y_grande.overridemin = y_min/100
+            y_grande.title = "Variação final do preço"
+            var x_grande = bigChart.addMeasureAxis("x","data")
+            x_grande.title = "Peso do produto no IPCA"
+            bigChart.draw()
+          });
+        
+    }
+
+      function achaPosicaoY (altura,y_min,y_max,dado) {
+          //acha o delta y
+          var variacao_y = Math.abs(y_min) + Math.abs(y_max)
+          //faz todos os dados ficarem positivos
+          dado = parseFloat(dado) + Math.abs(y_min)
+          //regra de três pra achar a posição
+          posicao_y = altura*dado/variacao_y
+          //inverte a posição e o sinal dela
+          posicao_y = posicao_y - altura
+          posicao_y = posicao_y * -1
+          return posicao_y
+      }
+    
+      function achaMaxMin(recortes,data,ultima_data) {
+          //acha o máximo e o mínimo do acumulado de todos os recortes
+          var variacoes = []
+          recortes.forEach(function (recorte) {
+              data_filtrado = dimple.filterData(data,"variavel",recorte)
+              data_filtrado.forEach(function (dado) {
+                  if (dado.data == ultima_data) {
+                      variacoes.push(parseFloat(dado.valor))
+                  }
+              },this)
+          } ,this)
+          variacoes.sort(function (a,b) { return a - b})
+          return [variacoes[0],variacoes[variacoes.length-1]]
+      }
+    </script>
+
+</head>
+<body>
+<div id="chartContainer"><script>inicializa();</script>
+</div>
+</body>
