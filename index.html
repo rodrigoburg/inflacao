@@ -36,6 +36,7 @@
               var y_max = max_min[1]
         
               // desenha um gráfico para cada um dos recortes
+              series = []
               recortes.forEach(function (recorte) {
                   //filtra o dado e constrói o gráfico
                   data_filtrado = dimple.filterData(data,"variavel",recorte);
@@ -53,9 +54,12 @@
                   var x = myChart.addCategoryAxis("x", "data");
                   var y = myChart.addMeasureAxis("y", "valor");
                   var s = myChart.addSeries("variavel", dimple.plot.line);
+                  myChart.setStoryboard("variavel");
+                  
+                  series.push(s)
                   y.hidden = true;
                   x.hidden = true;
-            
+                              
                   myChart.draw();
 
             }, this);
@@ -84,6 +88,13 @@
             var x_grande = bigChart.addMeasureAxis("x","data")
             x_grande.title = "Peso do produto no IPCA"
             bigChart.draw()
+            
+            //mostra as barrinhas de cada gráfico se o mouse passar em cima
+            series.forEach(function (s) {
+                s.addEventHandler("click", function (e) {
+                    console.log("oi")
+                })       
+            },this)           
           });
         
     }
