@@ -2,11 +2,14 @@
 <html lang="pt-br">
 <head>
     <meta charset="utf-8"/>
+    <script type="text/javascript" src="http://codeorigin.jquery.com/jquery-2.0.3.min.js"></script>
     <script src="http://d3js.org/d3.v3.min.js"></script>
     <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
     <script type="text/javascript">
+    window.variacoes = null
+    window.charts = []
     function inicializa() {
-        window.variacoes = null
+            
         var comprimento = 1000
         var altura = 600
         var ultima_data = "01/08/13"
@@ -36,11 +39,10 @@
               var y_max = max_min[1]
         
               // desenha um gráfico para cada um dos recortes
-              series = []
+              charts = []
               recortes.forEach(function (recorte) {
-                  //filtra o dado e constrói o gráfico
+                  //filtra o dado
                   data_filtrado = dimple.filterData(data,"variavel",recorte);
-                  var myChart = new dimple.chart(svg, data_filtrado);
             
                   //acha as posições
                   posicao_x = left+data_filtrado[0].peso*distancia_x
@@ -48,22 +50,16 @@
                       y_min,
                       y_max,
                       data_filtrado[data_filtrado.length-1].valor)
-                  myChart.setBounds(posicao_x, posicao_y, width, height);
             
-                  //cria os eixos e os esconde
-                  var x = myChart.addCategoryAxis("x", "data");
-                  var y = myChart.addMeasureAxis("y", "valor");
-                  var s = myChart.addSeries("variavel", dimple.plot.line);
-                  myChart.setStoryboard("variavel");
+                  //desenha o gráfico
+                  var grafico = desenhaGrafico(svg,data_filtrado,posicao_x,posicao_y,width,height)
+                  var item = {}
+                  item["recorte"] = recorte
+                  item["grafico"] = grafico
+                  charts.push(item)
                   
-                  series.push(s)
-                  y.hidden = true;
-                  x.hidden = true;
-                              
-                  myChart.draw();
-
             }, this);
-      
+            window.charts = charts
   
             //desenha um gráfico grande para servir de referência
             var novo_data = []
@@ -72,30 +68,88 @@
             //isso é necessário para que o eixo X fique no meio
             data_filtrado.forEach(function (dado){
                 if (i == 0) {
-                    dado.peso = y_max/100
+                    dado.peso = 1
                     i = 1
                 } else {
-                    dado.peso = y_min/100
+                    dado.peso = -1
                     i = 0
                 }
             novo_data.push(dado)            
             },this)
             var bigChart = new dimple.chart(svg, novo_data);
             var y_grande = bigChart.addPctAxis("y","peso")
-            y_grande.overrideMax = y_max/100
-            y_grande.overridemin = y_min/100
+            y_grande.overrideMax = 1
+            y_grande.overridemin = -1
             y_grande.title = "Variação final do preço"
+            y_grande.ticks = 2
             var x_grande = bigChart.addMeasureAxis("x","data")
             x_grande.title = "Peso do produto no IPCA"
             bigChart.draw()
+            y_grande.shapes.selectAll("text").remove();
             
-            //mostra as barrinhas de cada gráfico se o mouse passar em cima
-            series.forEach(function (s) {
-                s.addEventHandler("click", function (e) {
-                    console.log("oi")
-                })       
-            },this)           
+            
           });
+        
+    }
+    function desenhaGrafico (svg,data,posicao_x,posicao_y,width,height) {
+        var myChart = new dimple.chart(svg, data);
+        myChart.setBounds(posicao_x, posicao_y, width, height);
+  
+        //cria os eixos e os esconde
+        var x = myChart.addTimeAxis("x", "data","%d/%m/%y","%Y");
+        x.title = ""
+        var y = myChart.addMeasureAxis("y", "valor");
+        y.title = "Variação no preço (%)"
+        y.ticks = 4
+        var s = myChart.addSeries("variavel", dimple.plot.line);
+        myChart.draw();
+        
+        //esconde os eixos
+        jQuery(".dimple-axis").hide()
+        jQuery(".dimple-gridline").hide()
+        
+        
+        //coloca evento mouseover para mostrar os eixos
+        s.shapes.on("mouseover", function (e) {
+            //mostra os eixos do gráfico atual
+            jQuery("path").each(function () {                
+                if (this.id == data[0].variavel) {
+                    jQuery(this).prev().show()          
+                    jQuery(this).prev().prev().show()          
+                    jQuery(this).prev().prev().prev().show()          
+                    jQuery(this).prev().prev().prev().prev().show()          
+                    jQuery(this).prev().prev().prev().prev().prev().show()          
+                    
+                }                
+            })
+            
+            //dá destaque para o gráfico em questão e coloca todos os outros com menor opacidade
+            jQuery("path").each(function() {
+                if (this.id == data[0].variavel) {
+                    jQuery(this).attr("opacity",1)
+                } else {
+                    jQuery(this).attr("opacity",0.2)
+                }
+            })
+        });        
+        
+        //retira os eixos e volta a opacidade para o normal quando o mouse sai
+        s.shapes.on("mouseout", function (e) { 
+            jQuery("path").each(function () {   
+                jQuery(this).attr("opacity",8)
+                if (this.id == data[0].variavel) {
+                    jQuery(this).prev().hide()
+                    jQuery(this).prev().prev().hide()          
+                    jQuery(this).prev().prev().prev().hide()          
+                    jQuery(this).prev().prev().prev().prev().hide()          
+                    jQuery(this).prev().prev().prev().prev().prev().hide()          
+                              
+                }                
+            })
+    
+        });
+        
+        return myChart
         
     }
 
