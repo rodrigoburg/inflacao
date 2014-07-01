@@ -109,50 +109,41 @@
         jQuery(".dimple-gridline").hide()
         
         
-        //coloca evento mouseover para mostrar os eixos
-        s.shapes.on("mouseover", function (e) {
-            //mostra os eixos do gráfico atual
-            jQuery("path").each(function () {                
-                if (this.id == data[0].variavel) {
-                    jQuery(this).prev().show()          
-                    jQuery(this).prev().prev().show()          
-                    jQuery(this).prev().prev().prev().show()          
-                    jQuery(this).prev().prev().prev().prev().show()          
-                    jQuery(this).prev().prev().prev().prev().prev().show()          
-                    
-                }                
-            })
-            
-            //dá destaque para o gráfico em questão e coloca todos os outros com menor opacidade
-            jQuery("path").each(function() {
-                if (this.id == data[0].variavel) {
-                    jQuery(this).attr("opacity",1)
-                } else {
-                    jQuery(this).attr("opacity",0.2)
-                }
-            })
-        });        
+        //coloca evento mouseover para mostrar os eixos e dar highlight
+        //retira também
+        s.shapes
+            .on("mouseover", function (e) { mostraEixos(this) })
+            .on("mouseout", function (e) { escondeEixos(this) })
         
-        //retira os eixos e volta a opacidade para o normal quando o mouse sai
-        s.shapes.on("mouseout", function (e) { 
-            jQuery("path").each(function () {   
-                jQuery(this).attr("opacity",8)
-                if (this.id == data[0].variavel) {
-                    jQuery(this).prev().hide()
-                    jQuery(this).prev().prev().hide()          
-                    jQuery(this).prev().prev().prev().hide()          
-                    jQuery(this).prev().prev().prev().prev().hide()          
-                    jQuery(this).prev().prev().prev().prev().prev().hide()          
-                              
-                }                
+        //faz o mesmo para os círculos, além de colocar e tirar a tooltip
+        d3.selectAll("circle")
+            .on("mouseover", function (e) {
+                mostraEixos(this)
+                var grafico = achaGrafico(this)
+                dimple._showPointTooltip(e, this, grafico, grafico.series[0])
             })
-    
-        });
+            .on("mouseleave",function(e) {
+                escondeEixos(this)
+                var grafico = achaGrafico(this)
+                dimple._removeTooltip(e, this, grafico, grafico.series[0])
+        })       
         
         return myChart
         
     }
-
+    
+    function achaGrafico (evento) {
+        var variavel = evento.id.split("_")[0]
+        var charts = window.charts
+        var grafico = null
+        charts.forEach(function (chart) {
+            if (chart.recorte == variavel) {
+                grafico = chart.grafico
+            }
+        },this)
+        return grafico        
+    }
+    
       function achaPosicaoY (altura,y_min,y_max,dado) {
           //acha o delta y
           var variacao_y = Math.abs(y_min) + Math.abs(y_max)
@@ -179,6 +170,45 @@
           } ,this)
           variacoes.sort(function (a,b) { return a - b})
           return [variacoes[0],variacoes[variacoes.length-1]]
+      }
+      
+      function mostraEixos(evento) {
+          variavel = evento.id.split("_")[0]
+          //mostra os eixos do gráfico atual
+          jQuery("path").each(function () {                
+              if (this.id == variavel) {
+                  jQuery(this).prev().show()          
+                  jQuery(this).prev().prev().show()          
+                  jQuery(this).prev().prev().prev().show()          
+                  jQuery(this).prev().prev().prev().prev().show()          
+                  jQuery(this).prev().prev().prev().prev().prev().show()          
+                  
+              }                
+          })
+          
+          //dá destaque para o gráfico em questão e coloca todos os outros com menor opacidade
+          jQuery("path").each(function() {
+              if (this.id == variavel) {
+                  jQuery(this).attr("opacity",1)
+              } else {
+                  jQuery(this).attr("opacity",0.2)
+              }
+          })
+      }
+      
+      function escondeEixos(evento) { 
+          variavel = evento.id.split("_")[0]
+          jQuery("path").each(function () {   
+              jQuery(this).attr("opacity",8)
+              if (this.id == variavel) {
+                  jQuery(this).prev().hide()
+                  jQuery(this).prev().prev().hide()          
+                  jQuery(this).prev().prev().prev().hide()          
+                  jQuery(this).prev().prev().prev().prev().hide()          
+                  jQuery(this).prev().prev().prev().prev().prev().hide()          
+                            
+              }                
+          })
       }
     </script>
 
