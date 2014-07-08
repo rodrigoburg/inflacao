@@ -6,21 +6,25 @@ window.subgrupo = "tudo"
 
 function inicializa() {
     
-    var comprimento = 1200
-    var altura = 800
+    var comprimento = "100%"
+    var altura = "100%"
     var ultima_data = "05-2014"
     var svg = dimple.newSvg("#grafico_inflacao", comprimento, altura);
     d3.csv("dados/ipca_pronto.csv", function (data) {
+        //transforma altura e comprimento em pontos
+        comprimento = jQuery("#grafico_inflacao").width()
+        altura = jQuery("#grafico_inflacao").height()
+        
         window.data = data
       //variáveis de posição
       var posicao_y = 0,
           posicao_x = 0,
-          top = 30,
-          left = 120
-          margem_x = 320,
-          margem_y = 180,
-          width = 150,
-          height = 90
+          left = comprimento*0.1,
+          top = altura*0.05,
+          margem_x = comprimento*0.3,
+          margem_y = altura*0.2,
+          tamanho_x = 150,
+          tamanho_y = 40
 
       //pega cada um dos recortes
       var recortes = dimple.getUniqueValues(data, "variavel");
@@ -30,6 +34,8 @@ function inicializa() {
       pesos.sort(function(a, b){return b-a});
       var x_max = pesos[0]
       var x_min = pesos[pesos.length-1]
+      var num_x = pesos.length
+
       
       //acha o máximo e o mínimo do eixo Y
       max_min_y = achaMaxMin(recortes,data,ultima_data)
@@ -43,18 +49,26 @@ function inicializa() {
           data_filtrado = dimple.filterData(data,"variavel",recorte);
     
           //acha as posições
-          posicao_x = left+achaPosicaoX(comprimento-margem_x,
+          var peso = data_filtrado[0].peso
+        var pos_x = pesos.indexOf(peso)
+          var posicao_x = left+achaPosicaoX(comprimento-margem_x,
               x_min,
               x_max,
-              data_filtrado[0].peso)
-              
+              peso,
+              pos_x,
+              num_x)
+            
+          var ultimo_y = data_filtrado[data_filtrado.length-1].valor
           posicao_y = top+achaPosicaoY(altura-margem_y,
               y_min,
               y_max,
-              data_filtrado[data_filtrado.length-1].valor)
+              ultimo_y)
     
+          //acha cor
+          cor = achaCor(y_min,y_max,ultimo_y)         
+
           //desenha o gráfico
-          var grafico = desenhaGrafico(svg,data_filtrado,posicao_x,posicao_y,width,height)
+          var grafico = desenhaGrafico(svg,data_filtrado,posicao_x,posicao_y,tamanho_x,tamanho_y,cor)
 
           var item = {}
           item["recorte"] = recorte
@@ -90,13 +104,12 @@ function inicializa() {
     bigChart.draw()
     y_grande.shapes.selectAll("text").remove();
     
-    
   });
-
 }
-function desenhaGrafico (svg,data,posicao_x,posicao_y,width,height) {
+
+function desenhaGrafico (svg,data,posicao_x,posicao_y,tamanho_x,tamanho_y, cor) {
     var myChart = new dimple.chart(svg, data);
-    myChart.setBounds(posicao_x, posicao_y, width, height);
+    myChart.setBounds(posicao_x, posicao_y, tamanho_x, tamanho_y);
 
     //cria os eixos e os esconde
     var x = myChart.addTimeAxis("x", "data","%m-%Y","%Y");
@@ -109,9 +122,10 @@ function desenhaGrafico (svg,data,posicao_x,posicao_y,width,height) {
     y.tickFormat = "%"
     y.ticks = 4
     var s = myChart.addSeries("variavel", dimple.plot.line);
-    s.lineWeight = 1;
+    s.lineWeight = 1.2;
+    s.interpolation = "cardinal";
 
-    myChart.defaultColors = achaCor(data)
+    myChart.defaultColors = cor
     
     myChart.draw();
 
@@ -136,28 +150,41 @@ function desenhaGrafico (svg,data,posicao_x,posicao_y,width,height) {
 
 }
 
-function achaCor (data) {
-    var grupo = data[0]["subgrupo"]
-    var cores = {
-        "Alimentação no domicílio":"#595926",
-        "Alimentação fora do domicílio":"#594026",
-        "Aparelhos elétricos e não-elétricos":"#592626",
-        "Atendimento e serviços":"#592640",
-        "Calçados e acessórios":"#592659",
-        "Combustíveis e energia":"#402659",
-        "Cuidados pessoais":"#262659",
-        "Encargos e manutenção":"#265959",
-        "Joias e relógio de pulso":"#265940",
-        "Móveis e utensílios":"#265926",
-        "Produtos farmacêuticos. óculos e lentes":"#405926",
-        "Recreação e fumo":"#598F7D",
-        "Roupas":"#597D8F",
-        "Serviços":"#8F598F",
-        "Tecidos e armarinho":"#8F7D59",
-        "Transporte":"#8FA3B8"
-    }
-    cor = new dimple.color(cores[grupo])
+function achaCor (y_min,y_max,valor) {
+    var cor = null
+    if (valor > 0) {
+        divisoes = y_max/3
+        if (valor < divisoes) {
+            cor = "#E68B29"
+        } else if (valor <divisoes*2) {
+            cor = '#DE6C3C'
+        } else {
+            cor = "#BA0C09"
+        }
+    } else { //se o valor for negativo
+        divisoes = y_min/3
+        if (valor > divisoes) {
+            cor = "#B3C418"
+        } else if (valor > divisoes*2) {
+            cor = "#7FC418"
+        } else {
+            cor = "#05800F"
+        } 
+    } 
+    cor = new dimple.color(cor)
     return([cor])
+}
+
+function achaGradiente (numberOfItems) {
+    var rainbow = new Rainbow(); 
+    rainbow.setNumberRange(1, numberOfItems);
+    rainbow.setSpectrum('red', 'green');
+    var s = []
+    for (var i = 1; i <= numberOfItems; i++) {
+        var hexColour = rainbow.colourAt(i);
+        s.push('#' + hexColour)
+    }
+    return s; 
 }
 
 function achaGrafico (evento) {
@@ -173,26 +200,28 @@ function achaGrafico (evento) {
 }
 
 function achaPosicaoY (altura,y_min,y_max,ultimo_valor) {
-  //acha o delta y
-  var variacao_y = Math.abs(y_min) + Math.abs(y_max)
-  //faz todos os ultimo_valors ficarem positivos
-  ultimo_valor = parseFloat(ultimo_valor) + Math.abs(y_min)
-  //regra de três pra achar a posição
-  posicao_y = altura*ultimo_valor/variacao_y
-  //inverte a posição e o sinal dela
-  posicao_y = posicao_y - altura
-  posicao_y = posicao_y * -1
-  return posicao_y
+    ultimo_valor = parseFloat(ultimo_valor)
+    //acha posição para a primeira metade do gráfico (y positivo)
+    if (ultimo_valor > 0) {
+        posicao_y = (-1*(altura/2))*ultimo_valor/y_max
+        posicao_y = altura/2 + posicao_y
+    } else { //agora o mesmo para os y negativos
+        posicao_y = (altura/2)*ultimo_valor/y_min
+        posicao_y = posicao_y + altura/2
+    }
+    return posicao_y
 }
 
-function achaPosicaoX (largura,x_min,x_max,peso) {
+function achaPosicaoX (largura,x_min,x_max,peso,pos_x,num_x) {
   //acha o delta x
   var variacao_x = Math.abs(x_min) + Math.abs(x_max)
-  //faz todos os pesos ficarem positivos
-  peso = parseFloat(peso) + Math.abs(x_min)
+  peso = parseFloat(peso)
+  var distancia_media = largura/num_x
   //regra de três pra achar a posição
-  posicao_x = largura*peso/variacao_x
-  //inverte a posição e o sinal dela
+//  posicao_x = largura*peso/variacao_x
+  posicao_x = distancia_media*pos_x
+  posicao_x = posicao_x-largura
+  posicao_x = posicao_x*(-1)
   return posicao_x
 }
 
@@ -252,14 +281,14 @@ function destacaCurva(evento) {
   jQuery("path").each(function() {
       if (this.id == variavel) {
           jQuery(this).attr("opacity",1)
-          jQuery(this).attr("stroke-width","3")
+          jQuery(this).attr("stroke-tamanho_x","3")
       } 
   })
 }
 
 function escondeCurva(evento) {
     jQuery(evento).attr("opacity",0.2)
-    jQuery(evento).attr("stroke-width","0.5")
+    jQuery(evento).attr("stroke-tamanho_x","0.5")
 }
 
 function escondeOutrasCurvas(evento, subgrupo_selecionado) {
@@ -270,12 +299,12 @@ function escondeOutrasCurvas(evento, subgrupo_selecionado) {
       if (this.id != variavel) {
           if (window.congelado == false) {
               jQuery(this).attr("opacity",0.2)
-              jQuery(this).attr("stroke-width","0.5")              
+              jQuery(this).attr("stroke-tamanho_x","0.5")              
           } else {
               var subgrupo = data.filter(function (a) { return a["variavel"] == variavel})[0]["subgrupo"]
               if (subgrupo != subgrupo_selecionado) {
                   jQuery(this).attr("opacity",0.2)
-                  jQuery(this).attr("stroke-width","0.5")              
+                  jQuery(this).attr("stroke-tamanho_x","0.5")              
               }              
           }
       } 
@@ -287,7 +316,7 @@ function escondeEixos(evento) {
   jQuery("path").each(function () {  
       if (window.congelado == false) {    
           jQuery(this).attr("opacity",1)
-          jQuery(this).attr("stroke-width","1")
+          jQuery(this).attr("stroke-tamanho_x","1")
       }
       if (this.id == variavel) {
           jQuery(this).prevAll().slice(0,9).hide()
